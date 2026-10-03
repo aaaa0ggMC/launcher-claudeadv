@@ -26,6 +26,9 @@ const muted = ref(localStorage.getItem('claudeadv_muted') === '1')
 const storedVol = localStorage.getItem('claudeadv_volume')
 const volume = ref(storedVol === null ? 70 : Math.max(0, Math.min(100, Number(storedVol) || 0)))
 
+const resetOpen = ref(false)
+const resetting = ref(false)
+
 let game: ClaudeAdventure | null = null
 let ro: ResizeObserver | null = null
 
@@ -58,6 +61,21 @@ function toggleMute(): void {
   muted.value = !muted.value
   localStorage.setItem('claudeadv_muted', muted.value ? '1' : '0')
   game?.setMuted(muted.value)
+}
+
+async function resetData(): Promise<void> {
+  resetting.value = true
+  try {
+    const res = (await window.cockpit.command('claudeadv.reset', { confirm: true })) as
+      (ClaudeAdvStats & { ok: boolean }) | null
+    if (res?.ok) game?.resetProgress(res)
+  } catch (e) {
+    console.error('claudeadv.reset failed', e)
+  } finally {
+    resetting.value = false
+    resetOpen.value = false
+    giveBackFocus()
+  }
 }
 
 onMounted(async () => {
@@ -122,6 +140,14 @@ onBeforeUnmount(() => {
         @update:model-value="onVolume"
         @end="giveBackFocus"
       />
+      <v-btn
+        variant="text"
+        prepend-icon="mdi-delete-sweep-outline"
+        :disabled="!ready"
+        @click="resetOpen = true"
+      >
+        {{ t('claudeadv.reset.button') }}
+      </v-btn>
       <v-spacer />
       <span class="text-caption text-medium-emphasis">{{ t('claudeadv.hint') }}</span>
     </div>
@@ -133,6 +159,19 @@ onBeforeUnmount(() => {
       </v-alert>
       <canvas ref="cv" class="ca-canvas" :aria-label="t('claudeadv.title')" />
     </div>
+
+    <v-dialog v-model="resetOpen" max-width="440" @after-leave="giveBackFocus">
+      <v-card :title="t('claudeadv.reset.title')" class="pa-2">
+        <v-card-text>{{ t('claudeadv.reset.body') }}</v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="resetOpen = false">{{ t('claudeadv.reset.cancel') }}</v-btn>
+          <v-btn color="error" variant="tonal" :loading="resetting" @click="resetData">
+            {{ t('claudeadv.reset.confirm') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 

@@ -64,5 +64,14 @@
   "claudeadv.clear.finale": "上线！",
   "claudeadv.ending.title": "🚀 成功上线！",
   "claudeadv.ending.body": "Bug 修完了，测试全绿，祖传代码也重构好了。\n用户回了一句：「谢谢，能再加个小功能吗？」\n—— Claude 历险记 · 完 ——",
-  "claudeadv.ending.back": "返回标题"
+  "claudeadv.ending.back": "返回标题",
+  "claudeadv.cheat.on": "★ 隐藏角色「金色 Claude」已解锁：无敌 · 全关卡开放",
+  "claudeadv.cheat.off": "已切回普通 Claude",
+  "claudeadv.cheat.badge": "★ 金色 Claude · 无敌模式（不计战绩）",
+  "claudeadv.reset.button": "清除游戏数据",
+  "claudeadv.reset.title": "清除游戏数据？",
+  "claudeadv.reset.body": "将清空已解锁关卡、每关最佳纪录与通关次数，并关闭隐藏角色。此操作无法撤销。",
+  "claudeadv.reset.cancel": "取消",
+  "claudeadv.reset.confirm": "清除",
+  "claudeadv.reset.done": "游戏数据已清除"
 }

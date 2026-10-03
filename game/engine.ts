@@ -84,6 +84,10 @@ export interface GameHost {
 type Mode = 'title' | 'select' | 'help' | 'intro' | 'play' | 'pause' | 'dying' | 'clear' | 'ending'
 type Action = 'left' | 'right' | 'up' | 'down' | 'jump' | 'shoot' | 'pause' | 'confirm' | 'back'
 
+/** 标题画面输入任一暗号 → 切换隐藏角色「金色 Claude」（无敌，演示用） */
+const CHEAT_CODES = ['AAAA0GGMC', 'CLAUDE']
+const CHEAT_KEY = 'claudeadv-cheat'
+
 const KEYMAP: Record<string, Action[]> = {
   ArrowLeft: ['left'],
   KeyA: ['left'],
@@ -242,6 +246,14 @@ const overlap = (a: Box, b: Box): boolean =>
 
 const clamp = (v: number, a: number, b: number): number => Math.max(a, Math.min(b, v))
 
+const loadCheat = (): boolean => {
+  try {
+    return localStorage.getItem(CHEAT_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 const fmtTime = (s: number): string => {
   const m = Math.floor(s / 60)
   const r = s - m * 60
@@ -301,6 +313,8 @@ export class ClaudeAdventure {
     newBest: boolean
   } | null = null
   private toast: { text: string; life: number } | null = null
+  private cheat = loadCheat()
+  private cheatBuf = ''
 
   private readonly onKeyDown = (e: KeyboardEvent): void => this.handleKey(e, true)
   private readonly onKeyUp = (e: KeyboardEvent): void => this.handleKey(e, false)
@@ -358,6 +372,21 @@ export class ClaudeAdventure {
     this.setMode('title')
   }
 
+  /** 清除游戏数据后调用：换上新进度、关掉隐藏角色、回到标题 */
+  resetProgress(stats: ClaudeAdvStats | null): void {
+    this.stats = stats
+    this.cheat = false
+    this.cheatBuf = ''
+    try {
+      localStorage.removeItem(CHEAT_KEY)
+    } catch {
+      // ignore
+    }
+    this.down.clear()
+    this.setMode('title')
+    this.showToast(this.host.t('claudeadv.reset.done'))
+  }
+
   start(): void {
     this.last = performance.now()
     const loop = (now: number): void => {
@@ -398,6 +427,7 @@ export class ClaudeAdventure {
     if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable))
       return
     if (!this.canvas.isConnected) return
+    if (isDown && !e.repeat && this.mode === 'title') this.typeCheat(e.code)
     const acts = KEYMAP[e.code]
     if (!acts) return
     e.preventDefault()
@@ -410,6 +440,23 @@ export class ClaudeAdventure {
         this.down.delete(a)
       }
     }
+  }
+
+  private typeCheat(code: string): void {
+    const m = /^(?:Key|Digit|Numpad)([A-Z0-9])$/.exec(code)
+    if (!m) return
+    this.cheatBuf = (this.cheatBuf + m[1]).slice(-16)
+    if (!CHEAT_CODES.some((c) => this.cheatBuf.endsWith(c))) return
+    this.cheatBuf = ''
+    this.cheat = !this.cheat
+    try {
+      if (this.cheat) localStorage.setItem(CHEAT_KEY, '1')
+      else localStorage.removeItem(CHEAT_KEY)
+    } catch {
+      // 存不了就只在本次生效
+    }
+    this.sfx(this.cheat ? 'clear' : 'select')
+    this.showToast(this.host.t(this.cheat ? 'claudeadv.cheat.on' : 'claudeadv.cheat.off'))
   }
 
   private toCanvas(e: MouseEvent): { x: number; y: number } {
@@ -442,6 +489,7 @@ export class ClaudeAdventure {
   }
 
   private unlocked(): number {
+    if (this.cheat) return LEVELS.length
     return clamp(this.stats?.unlocked ?? 1, 1, LEVELS.length)
   }
 
@@ -826,7 +874,7 @@ export class ClaudeAdventure {
   private updatePlay(dt: number): void {
     const p = this.player
     this.elapsed += dt
-    this.contextUsed += dt / this.level.contextSeconds
+    if (!this.cheat) this.contextUsed += dt / this.level.contextSeconds
     if (this.contextUsed >= 1) {
       this.contextUsed = 1
       this.die('context')
@@ -848,7 +896,15 @@ export class ClaudeAdventure {
     this.shake = Math.max(0, this.shake - dt * 2)
 
     // 摔出地图
-    if (p.y > ROWS * TILE + 40) this.die('fall')
+    if (p.y > ROWS * TILE + 40) {
+      if (this.cheat) {
+        p.x = this.respawn.x
+        p.y = this.respawn.y
+        p.vx = 0
+        p.vy = 0
+        p.invuln = 1
+      } else this.die('fall')
+    }
 
     // 相机：带前瞻的平滑跟随
     const tx = clamp(p.x + p.w / 2 - VIEW_W / 2 + p.facing * 70, 0, this.levelW() - VIEW_W)
@@ -990,6 +1046,11 @@ export class ClaudeAdventure {
       for (let tx = l; tx <= r; tx++) {
         const c = this.tileAt(tx, ty)
         if (c === '~' && p.y + p.h > ty * TILE + 8) {
+          if (this.cheat) {
+            p.vy = -640
+            p.airJumps = 1
+            continue
+          }
           this.die('lava')
           return
         }
@@ -1495,6 +1556,13 @@ export class ClaudeAdventure {
   private hurt(fromX: number): void {
     const p = this.player
     if (p.invuln > 0 || this.mode !== 'play') return
+    if (this.cheat) {
+      // 无敌：照常击退，但不扣血
+      p.invuln = 0.6
+      p.vy = -380
+      p.vx = (p.x + p.w / 2 < fromX ? -1 : 1) * 260
+      return
+    }
     p.hp--
     if (p.hp <= 0) {
       this.die('hp')
@@ -1568,7 +1636,7 @@ export class ClaudeAdventure {
       deaths: this.deaths
     }
     const prev = this.stats?.levels[String(this.level.index)] ?? null
-    const newBest = !prev?.bestTime || result.time < prev.bestTime
+    const newBest = !this.cheat && (!prev?.bestTime || result.time < prev.bestTime)
     this.clearInfo = {
       time: result.time,
       tokens: result.tokens,
@@ -1577,6 +1645,7 @@ export class ClaudeAdventure {
       newBest
     }
     this.setMode('clear')
+    if (this.cheat) return
     void this.host.record(result).then((s) => {
       if (s) this.stats = s
     })
@@ -1841,7 +1910,8 @@ export class ClaudeAdventure {
         stretch: p.stretch,
         blink: p.blinkT < 0,
         hurt: this.mode === 'dying' || p.invuln > 1.1,
-        spin: p.spin
+        spin: p.spin,
+        golden: this.cheat
       })
     }
 
@@ -1905,7 +1975,10 @@ export class ClaudeAdventure {
     const ctx = this.ctx
     const p = this.player
     this.panel(14, 12, 270, 44, 'rgba(10, 10, 20, 0.55)')
-    for (let i = 0; i < MAX_HP; i++) drawHeart(ctx, 38 + i * 30, 34, 22, i < p.hp)
+    if (this.cheat) {
+      drawHeart(ctx, 38, 34, 22, true)
+      this.text('∞', 58, 42, 22, '#ffd94a', 'left', true)
+    } else for (let i = 0; i < MAX_HP; i++) drawHeart(ctx, 38 + i * 30, 34, 22, i < p.hp)
     drawCoin(ctx, 148, 34, 0)
     this.text(`× ${this.tokens}`, 164, 40, 18, '#fff', 'left', true)
 
@@ -2113,13 +2186,16 @@ export class ClaudeAdventure {
         stretch: 1 + Math.sin(this.time * 2.4) * 0.04,
         blink: this.time % 4 < 0.12,
         hurt: false,
-        spin: 0
+        spin: 0,
+        golden: this.cheat
       },
       2.6
     )
 
     this.text(this.host.t('claudeadv.title'), 64, 140, 58, '#fff', 'left', true)
     this.text("Claude's Adventure", 68, 180, 20, CLAUDE_ORANGE, 'left', true)
+    if (this.cheat)
+      this.text(this.host.t('claudeadv.cheat.badge'), 68, 210, 15, '#ffd94a', 'left', true)
     const cont = this.unlocked()
     const startLabel =
       cont > 1
@@ -2263,7 +2339,8 @@ export class ClaudeAdventure {
         stretch: 1,
         blink: false,
         hurt: false,
-        spin: Math.sin(this.time * 1.5) * 0.2
+        spin: Math.sin(this.time * 1.5) * 0.2,
+        golden: this.cheat
       },
       3
     )

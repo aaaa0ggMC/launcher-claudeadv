@@ -64,5 +64,14 @@
   "claudeadv.clear.finale": "Ship it!",
   "claudeadv.ending.title": "🚀 Shipped!",
   "claudeadv.ending.body": "Bugs fixed, tests green, legacy code refactored.\nThe user replies: \"Thanks! Could you add one small feature?\"\n— Claude's Adventure · The End —",
-  "claudeadv.ending.back": "Back to Title"
+  "claudeadv.ending.back": "Back to Title",
+  "claudeadv.cheat.on": "★ Hidden character \"Golden Claude\" unlocked: invincible · all levels open",
+  "claudeadv.cheat.off": "Back to regular Claude",
+  "claudeadv.cheat.badge": "★ Golden Claude · invincible (runs not recorded)",
+  "claudeadv.reset.button": "Clear game data",
+  "claudeadv.reset.title": "Clear game data?",
+  "claudeadv.reset.body": "This resets unlocked levels, best records and ending count, and turns off the hidden character. This cannot be undone.",
+  "claudeadv.reset.cancel": "Cancel",
+  "claudeadv.reset.confirm": "Clear",
+  "claudeadv.reset.done": "Game data cleared"
 }

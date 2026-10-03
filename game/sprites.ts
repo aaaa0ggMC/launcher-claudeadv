@@ -319,6 +319,8 @@ export interface PlayerPose {
   hurt: boolean
   /** 整体旋转（死亡翻滚 / 二段跳翻转） */
   spin: number
+  /** 隐藏角色「金色 Claude」（作弊模式） */
+  golden?: boolean
 }
 
 /**
@@ -338,12 +340,15 @@ export function drawClaude(
   ctx.scale(scale / Math.sqrt(pose.stretch), scale * pose.stretch)
   ctx.rotate(pose.spin)
 
+  const [body, light, dark] = pose.golden
+    ? ['#f2c230', '#fff1a8', '#a8730f']
+    : [CLAUDE_ORANGE, CLAUDE_ORANGE_LIGHT, CLAUDE_ORANGE_DARK]
   const rays = 12
   const rot = pose.t * (0.6 + pose.run * 4) * pose.facing
   ctx.lineCap = 'round'
   // 光芒外描边（深色），再画本色，形成描边感
   for (const pass of [0, 1]) {
-    ctx.strokeStyle = pass === 0 ? CLAUDE_ORANGE_DARK : CLAUDE_ORANGE
+    ctx.strokeStyle = pass === 0 ? dark : body
     ctx.lineWidth = pass === 0 ? 7 : 4.5
     ctx.beginPath()
     for (let i = 0; i < rays; i++) {
@@ -356,15 +361,15 @@ export function drawClaude(
     ctx.stroke()
   }
   // 身体
-  ctx.fillStyle = CLAUDE_ORANGE
-  ctx.strokeStyle = CLAUDE_ORANGE_DARK
+  ctx.fillStyle = body
+  ctx.strokeStyle = dark
   ctx.lineWidth = 2
   ctx.beginPath()
   ctx.arc(0, 0, 10.5, 0, Math.PI * 2)
   ctx.fill()
   ctx.stroke()
   // 高光
-  ctx.fillStyle = CLAUDE_ORANGE_LIGHT
+  ctx.fillStyle = light
   ctx.beginPath()
   ctx.arc(-3.5, -4, 3.5, 0, Math.PI * 2)
   ctx.fill()
@@ -409,6 +414,23 @@ export function drawClaude(
   ctx.arc(ex - 6.5, 4, 2, 0, Math.PI * 2)
   ctx.arc(ex + 6.5, 4, 2, 0, Math.PI * 2)
   ctx.fill()
+  if (pose.golden) {
+    // 小皇冠
+    ctx.fillStyle = '#ffd94a'
+    ctx.strokeStyle = dark
+    ctx.lineWidth = 1.2
+    ctx.beginPath()
+    ctx.moveTo(-6, -9)
+    ctx.lineTo(-6, -16)
+    ctx.lineTo(-3, -12)
+    ctx.lineTo(0, -17)
+    ctx.lineTo(3, -12)
+    ctx.lineTo(6, -16)
+    ctx.lineTo(6, -9)
+    ctx.closePath()
+    ctx.fill()
+    ctx.stroke()
+  }
   ctx.restore()
 }
 
