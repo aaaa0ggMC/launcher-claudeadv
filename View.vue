@@ -191,4 +191,12 @@ onBeforeUnmount(() => {
   max-width: 100%;
   max-height: 100%;
 }
+
+/* 竖屏手机：横版画面贴着工具栏放在上方，不在高高的舞台里垂直居中（上下各空出半屏） */
+@media (max-width: 720px) and (orientation: portrait) {
+  .ca-canvas {
+    top: 0;
+    transform: translateX(-50%);
+  }
+}
 </style>
